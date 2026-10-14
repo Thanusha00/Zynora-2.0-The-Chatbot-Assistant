@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { api } from "../api";
 
@@ -8,12 +9,20 @@ export default function Chat({ user, onAdmin, onLogout }) {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Suggested follow-up questions
+  // Confirm these topics exist in the approved knowledge base.
+  const suggestedQuestions = [
+    "What is Zyngram?",
+    "How does franchise registration work?",
+    "What services does Zyngram provide?",
+  ];
+
   // Load all conversations
   async function loadConversations() {
     try {
       const data = await api.getConversations();
-
       const list = data.conversations || [];
+
       setConversations(list);
 
       if (!activeId && list.length > 0) {
@@ -28,9 +37,9 @@ export default function Chat({ user, onAdmin, onLogout }) {
   async function selectConversation(id) {
     try {
       setActiveId(id);
+      setMessages([]);
 
       const data = await api.getConversationMessages(id);
-
       setMessages(data.messages || []);
     } catch (error) {
       console.error("Failed to load conversation:", error);
@@ -51,19 +60,20 @@ export default function Chat({ user, onAdmin, onLogout }) {
 
         setActiveId(data.conversation.id);
         setMessages([]);
+        setInput("");
       }
     } catch (error) {
       console.error("Failed to create conversation:", error);
     }
   }
 
-  // Send a message to Zynora
-  async function sendMessage() {
-    if (!input.trim() || !activeId || loading) {
+  // Send a message or a suggested question to Zynora
+  async function sendMessage(question = input) {
+    if (!question.trim() || !activeId || loading) {
       return;
     }
 
-    const text = input.trim();
+    const text = question.trim();
 
     setInput("");
 
@@ -102,7 +112,8 @@ export default function Chat({ user, onAdmin, onLogout }) {
         ...prev,
         {
           role: "ai",
-          content: `Error: ${error.message}`,
+          content:
+            "Unable to get a response right now. Please try again.",
           grounded: false,
         },
       ]);
@@ -122,6 +133,7 @@ export default function Chat({ user, onAdmin, onLogout }) {
 
       setActiveId(null);
       setMessages([]);
+      setInput("");
 
       await loadConversations();
     } catch (error) {
@@ -134,12 +146,16 @@ export default function Chat({ user, onAdmin, onLogout }) {
     loadConversations();
   }, []);
 
+  // Show suggested questions only after an AI response
+  const showSuggestions =
+    !loading &&
+    messages.length > 0 &&
+    messages[messages.length - 1].role === "ai";
+
   return (
     <div className="app-shell">
-
       {/* Sidebar */}
       <aside className="sidebar">
-
         <div className="brand">
           Zynora <span>2.0</span>
         </div>
@@ -149,7 +165,6 @@ export default function Chat({ user, onAdmin, onLogout }) {
         </button>
 
         <div className="conversation-list">
-
           {conversations.length === 0 && (
             <div className="empty">
               No conversations yet.
@@ -171,11 +186,9 @@ export default function Chat({ user, onAdmin, onLogout }) {
               {conversation.title || "New Conversation"}
             </button>
           ))}
-
         </div>
 
         <div className="sidebar-bottom">
-
           {user?.role === "ADMIN" && (
             <button onClick={onAdmin}>
               Admin Dashboard
@@ -185,35 +198,27 @@ export default function Chat({ user, onAdmin, onLogout }) {
           <button onClick={onLogout}>
             Logout
           </button>
-
         </div>
-
       </aside>
 
       {/* Main Chat Area */}
       <main className="chat-main">
-
         <header>
-
           <div>
             <strong>Zynora</strong>
-            <small>
-              Approved Zyngram knowledge only
-            </small>
+            <small>Approved Zyngram knowledge only</small>
           </div>
 
           <button
             onClick={deleteConversation}
-            disabled={!activeId}
+            disabled={!activeId || loading}
           >
             Delete
           </button>
-
         </header>
 
         {/* Messages */}
         <section className="messages">
-
           {!activeId && (
             <div className="empty">
               Create a conversation to start.
@@ -221,92 +226,91 @@ export default function Chat({ user, onAdmin, onLogout }) {
           )}
 
           {messages.map((message, index) => (
-
             <div
               key={index}
-              className={
-                `bubble ${
-                  message.role === "user"
-                    ? "user"
-                    : "bot"
-                }`
-              }
+              className={`bubble ${
+                message.role === "user" ? "user" : "bot"
+              }`}
             >
-
               <strong>
-                {message.role === "user"
-                  ? "You"
-                  : "Zynora"}
+                {message.role === "user" ? "You" : "Zynora"}
               </strong>
 
               <div className="content">
                 {message.content}
               </div>
 
-              {/* Sources */}
+              {/* Approved knowledge sources */}
               {message.role === "ai" &&
                 message.grounded &&
                 message.sources?.length > 0 && (
-
                   <div className="source-card">
-
                     <div>
                       Grounded • Confidence{" "}
                       {message.confidence ?? 0}%
                     </div>
 
-                    {message.sources.map(
-                      (source, sourceIndex) => (
-
-                        <div key={sourceIndex}>
-                          {source.title}
-                          {source.version
-                            ? ` · v${source.version}`
-                            : ""}
-                          {source.category
-                            ? ` · ${source.category}`
-                            : ""}
-                        </div>
-
-                      )
-                    )}
-
+                    {message.sources.map((source, sourceIndex) => (
+                      <div key={sourceIndex}>
+                        {source.title}
+                        {source.version
+                          ? ` · v${source.version}`
+                          : ""}
+                        {source.category
+                          ? ` · ${source.category}`
+                          : ""}
+                      </div>
+                    ))}
                   </div>
                 )}
 
-              {/* No source */}
+              {/* No approved source */}
               {message.role === "ai" &&
                 message.grounded === false && (
-
                   <div className="no-source">
                     No approved knowledge source found.
                   </div>
                 )}
-
             </div>
-
           ))}
 
-          {/* Loading */}
+          {/* Loading indicator */}
           {loading && (
             <div className="bubble bot">
-              Zynora is retrieving approved
-              knowledge...
+              <strong>Zynora</strong>
+              <div className="content">
+                Zynora is retrieving approved knowledge...
+              </div>
             </div>
           )}
 
+          {/* NEW FEATURE: Suggested follow-up questions */}
+          {showSuggestions && activeId && (
+            <div className="suggested-questions">
+              <p>Suggested questions</p>
+
+              {suggestedQuestions.map((question) => (
+                <button
+                  key={question}
+                  type="button"
+                  onClick={() => sendMessage(question)}
+                  disabled={loading}
+                >
+                  {question}
+                </button>
+              ))}
+            </div>
+          )}
         </section>
 
         {/* Message Input */}
         <footer>
-
           <input
             value={input}
-            onChange={(event) =>
-              setInput(event.target.value)
-            }
+            onChange={(event) => setInput(event.target.value)}
             onKeyDown={(event) => {
-              if (event.key === "Enter") {
+              if (event.key === "Enter" && !event.shiftKey) {
+                event.preventDefault();
                 sendMessage();
               }
             }}
@@ -315,20 +319,13 @@ export default function Chat({ user, onAdmin, onLogout }) {
           />
 
           <button
-            onClick={sendMessage}
-            disabled={
-              !activeId ||
-              loading ||
-              !input.trim()
-            }
+            onClick={() => sendMessage()}
+            disabled={!activeId || loading || !input.trim()}
           >
             Send
           </button>
-
         </footer>
-
       </main>
-
     </div>
   );
 }

@@ -2195,3 +2195,44 @@ textarea {
 .user-dashboard-container .activity-content span {
   color: #ffffff !important;
 }
+
+
+
+/* Day 17: Suggested follow-up questions */
+
+.suggested-questions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 0;
+}
+
+.suggested-questions p {
+  flex-basis: 100%;
+  margin: 0 0 4px;
+  color: #666;
+  font-size: 13px;
+}
+
+.suggested-questions button {
+  max-width: 100%;
+  padding: 9px 13px;
+  border: 1px solid #d5dce8;
+  border-radius: 18px;
+  background: #fff;
+  color: #263b5a;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.suggested-questions button:hover {
+  background: #edf4ff;
+}
+
+.suggested-questions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
